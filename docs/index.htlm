@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bài 1 – Hello Cloud – 2324802010346</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #222; }
+    h1 { color: #0b4f9c; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 2rem; }
+    th, td { border: 1px solid #999; padding: .5rem .75rem; text-align: left; vertical-align: top; }
+    th { background: #e8eef7; }
+  </style>
+</head>
+<body>
+  <h1>Bài 1 – Hello Cloud API</h1>
+  <p><b>Họ tên:</b> Hoàng Ngọc Nhật Tân – <b>MSSV:</b> 2324802010346</p>
+  <p><b>Repo:</b> <a href="https://github.com/Tantamthan/notes-api-2324802010346">github.com/Tantamthan/notes-api-2324802010346</a></p>
+
+  <h2>1. So sánh máy cá nhân và Codespace</h2>
+  <table>
+    <tr><th>Tiêu chí</th><th>Máy cá nhân</th><th>Codespace</th></tr>
+    <tr>
+      <td>Thời gian từ lúc bắt đầu đến khi chạy được <code>node -v</code></td>
+      <td>Đã cài sẵn từ trước (Node 24, JDK 17, Docker). Nếu cài mới Node.js + JDK + Docker Desktop ước tính 30–60 phút: tải bộ cài, cài đặt, cấu hình PATH, khởi động lại máy.</td>
+      <td>Khoảng 15 phút từ lúc bấm "Create codespace", không cần cài gì trên máy. Thời gian này gồm cả lần đầu bị lỗi cài Docker-in-Docker (container chạy chế độ khôi phục) và lần rebuild sau khi sửa image thành <code>javascript-node:22-bookworm</code>. Nếu cấu hình đúng ngay từ đầu, chỉ mất vài phút.</td>
+    </tr>
+    <tr>
+      <td>Số CPU, RAM</td>
+      <td>16 CPU, 23.2 GB RAM</td>
+      <td>2 CPU, 7.8 GB RAM (từ API)</td>
+    </tr>
+    <tr>
+      <td>Hệ điều hành</td>
+      <td>Windows 11 (Windows_NT 10.0.26200)</td>
+      <td>Linux 6.8.0-1064-azure (Ubuntu, chạy trên hạ tầng Microsoft Azure)</td>
+    </tr>
+    <tr>
+      <td>Cách truy cập từ thiết bị khác</td>
+      <td>Khó: phải mở port, cấu hình router/tường lửa; thường chỉ truy cập được trong mạng LAN.</td>
+      <td>Đặt cổng 3000 sang Public, mở URL <code>*-3000.app.github.dev</code> trên điện thoại qua Internet; xong chuyển lại Private.</td>
+    </tr>
+    <tr>
+      <td>Chi phí, đo bằng gì</td>
+      <td>Trả trước tiền mua máy và tiền điện; không đo theo mức sử dụng.</td>
+      <td>Trả theo mức dùng, đo bằng core-giờ (máy 2 lõi chạy 1 giờ = 2 core-giờ). Gói GitHub Free có 120 core-giờ/tháng (≈ $10,80, tức ≈ $0,18/giờ máy 2 lõi) và 15 GB lưu trữ, hạn mức làm mới mỗi tháng. Buổi làm bài dùng khoảng 1 core-giờ (ước tính, vì trang Settings → Billing → Usage cập nhật chậm vài giờ).</td>
+    </tr>
+  </table>
+
+  <p><b>Nhận xét:</b> Máy cá nhân có cấu hình mạnh hơn Codespace (16 CPU so với 2 CPU), nhưng Codespace vượt trội ở tốc độ chuẩn bị môi trường, khả năng truy cập từ mọi thiết bị, môi trường đồng nhất cho cả lớp (cùng Node 22, JDK 25) và chi phí tính theo mức dùng. Khi cần mạnh hơn, có thể đổi Codespace sang máy 4, 8 hoặc 16 lõi mà không phải mua phần cứng. Ngược lại, đám mây cũng mang rủi ro mới: lần tạo đầu tiên bị lỗi do image của nhà cung cấp thay đổi, cho thấy môi trường phụ thuộc vào bên thứ ba.</p>
+
+  <h2>2. Năm đặc tính điện toán đám mây theo NIST</h2>
+  <table>
+    <tr><th>Đặc tính NIST</th><th>Thao tác minh họa trong bài</th></tr>
+    <tr><td>Tự phục vụ theo yêu cầu (On-demand self-service)</td><td>Tự bấm "Create codespace" là được cấp một máy ảo Linux có sẵn Node, Java, Docker, không cần ai duyệt hay cài đặt thủ công.</td></tr>
+    <tr><td>Truy cập mạng rộng (Broad network access)</td><td>Lập trình hoàn toàn trên trình duyệt; mở API từ điện thoại qua URL công khai <code>*.app.github.dev</code>.</td></tr>
+    <tr><td>Gộp tài nguyên (Resource pooling)</td><td>Máy ảo được cấp từ kho máy chủ dùng chung trên Azure (nhân <code>6.8.0-1064-azure</code>, trường <code>host</code> là tên ảo); người dùng không biết máy vật lý nằm ở đâu.</td></tr>
+    <tr><td>Co giãn nhanh (Rapid elasticity)</td><td>Có thể đổi cấu hình 2 → 4 → 8 lõi bằng "Change machine type", rebuild hoặc tạo/xóa codespace trong vài phút.</td></tr>
+    <tr><td>Dịch vụ đo lường được (Measured service)</td><td>Mức sử dụng được đo bằng core-giờ và GB lưu trữ, quy đổi ra tiền (120 core-giờ ≈ $10,80) và hiển thị ở Settings → Billing → Usage; hạn mức tự làm mới mỗi tháng.</td></tr>
+  </table>
+</body>
+</html>
