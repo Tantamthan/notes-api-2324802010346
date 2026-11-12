@@ -1,0 +1,5 @@
+docker run -d --name notes2 -p 3001:3000 --cpus=0.5 --memory=128m notes-api:1.0curl -s localhost:3000 && echo
+curl -s localhost:3001 && echonode_modules
+.env
+.git
+docs
