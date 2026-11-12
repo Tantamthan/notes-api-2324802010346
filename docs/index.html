@@ -58,5 +58,115 @@
     <tr><td>Co giãn nhanh (Rapid elasticity)</td><td>Có thể đổi cấu hình 2 → 4 → 8 lõi bằng "Change machine type", rebuild hoặc tạo/xóa codespace trong vài phút.</td></tr>
     <tr><td>Dịch vụ đo lường được (Measured service)</td><td>Mức sử dụng được đo bằng core-giờ và GB lưu trữ, quy đổi ra tiền (120 core-giờ ≈ $10,80) và hiển thị ở Settings → Billing → Usage; hạn mức tự làm mới mỗi tháng.</td></tr>
   </table>
+<!-- ===== BÀI 2 ===== -->
+<section id="bai2">
+<style>
+#bai2{max-width:900px;margin:2.5rem auto;line-height:1.6}
+#bai2 .b2-title{text-align:center;border-top:2px solid currentColor;padding-top:1.5rem}
+#bai2 .b2-scroll{overflow-x:auto}
+#bai2 table{border-collapse:collapse;width:100%;margin:.75rem 0}
+#bai2 th,#bai2 td{border:1px solid #999;padding:.4rem .6rem;vertical-align:top;text-align:left}
+#bai2 code{font-family:Consolas,"Courier New",monospace;font-size:.9em;background:rgba(127,127,127,.15);padding:0 .25em;border-radius:3px}
+#bai2 figure{margin:1rem 0;text-align:center}
+#bai2 img{max-width:100%;height:auto;border:1px solid #444}
+#bai2 figcaption{font-style:italic;font-size:.9em;margin-top:.3rem}
+#bai2 mark{background:#ff0}
+</style>
+<h2 class="b2-title">BÀI 2 – ẢO HÓA, CONTAINER VÀ MÔ PHỎNG TRUNG TÂM DỮ LIỆU</h2>
+<div class="b2-scroll"><table><thead><tr><th>Thông tin</th><th>Nội dung</th></tr></thead><tbody><tr><td>Họ và tên</td><td>Hoàng Ngọc Nhật Tân</td></tr><tr><td>MSSV</td><td>2324802010346</td></tr><tr><td>Repo GitHub</td><td><a href="https://github.com/Tantamthan/notes-api-2324802010346">https://github.com/Tantamthan/notes-api-2324802010346</a></td></tr><tr><td>Image trên GHCR</td><td>ghcr.io/tantamthan/notes-api:1.0</td></tr><tr><td>Link package</td><td><a href="https://github.com/users/Tantamthan/packages/container/package/notes-api">https://github.com/users/Tantamthan/packages/container/package/notes-api</a></td></tr></tbody></table></div>
+<h3>Phần A. Đóng gói API thành container</h3>
+<h4>A.1. Dockerfile và .dockerignore</h4>
+<p>Dockerfile dùng image nền <code>node:22-alpine</code> cho gọn nhẹ, chỉ cài thư viện chạy thật (<code>npm ci --omit=dev</code>) và chạy ứng dụng bằng người dùng <code>node</code> thay vì root để giảm rủi ro nếu container bị tấn công. Tệp <code>.dockerignore</code> loại bỏ <code>node_modules</code> (sẽ cài lại bên trong), <code>.env</code> (tránh lộ bí mật), <code>.git</code> và <code>docs</code>.</p>
+<figure><img src="bai2/h_docker.png" alt="Hình 1. Nội dung Dockerfile và .dockerignore" loading="lazy"><figcaption>Hình 1. Nội dung Dockerfile và .dockerignore</figcaption></figure>
+<p>Image build thành công với tag <code>notes-api:1.0</code>. Docker bản 29 hiển thị hai cột thay cho cột SIZE cũ: image chiếm <strong>251 MB</strong> trên đĩa sau khi giải nén (DISK USAGE) và <strong>63,3 MB</strong> ở dạng nén (CONTENT SIZE), tức lượng dữ liệu phải tải khi push hay pull.</p>
+<figure><img src="bai2/h_build.png" alt="Hình 2. Build image notes-api:1.0 và kích thước image" loading="lazy"><figcaption>Hình 2. Build image notes-api:1.0 và kích thước image</figcaption></figure>
+<h4>A.2. Quan sát hai bản sao notes1 và notes2</h4>
+<p>Khi gọi <code>GET /</code> vào cổng 3000 và 3001, trường <strong>host</strong> của hai bản sao khác nhau: notes1 là <code>99f95f78fb4b</code>, notes2 là <code>a8c74fd68b53</code>, chính là ID của từng container. Ngược lại, cả hai đều báo <strong>cpus = 2</strong> và <strong>memoryGB = 7,8</strong>, đúng bằng cấu hình máy Codespace, dù notes2 đã bị giới hạn <code>--cpus=0.5 --memory=128m</code>.</p>
+<figure><img src="bai2/h_run.png" alt="Hình 3. Chạy hai bản sao và gọi API: host khác nhau, cpus và memoryGB giống nhau" loading="lazy"><figcaption>Hình 3. Chạy hai bản sao và gọi API: host khác nhau, cpus và memoryGB giống nhau</figcaption></figure>
+<p>Lệnh <code>docker stats --no-stream</code> cho thấy giới hạn có thật: notes2 dùng <strong>13,08 MiB / 128 MiB</strong>, còn notes1 dùng 13,41 MiB / 7,756 GiB, tức không bị giới hạn ngoài RAM của máy. Tệp <code>/sys/fs/cgroup/memory.max</code> bên trong notes2 ghi <strong>134217728</strong> byte, đúng bằng 128 MiB. Như vậy giới hạn đã được áp đặt, chỉ có ứng dụng không nhìn thấy nó (giải thích ở Câu 1).</p>
+<figure><img src="bai2/h_stats.png" alt="Hình 4. docker stats: notes2 bị giới hạn 128 MiB; memory.max = 134217728" loading="lazy"><figcaption>Hình 4. docker stats: notes2 bị giới hạn 128 MiB; memory.max = 134217728</figcaption></figure>
+<h4>A.3. So sánh máy ảo và container</h4>
+<div class="b2-scroll"><table><thead><tr><th>Tiêu chí</th><th>Codespace (máy ảo)</th><th>Container notes2</th></tr></thead><tbody><tr><td>Thời gian khởi động</td><td><mark>[thời gian khởi động Codespace]</mark></td><td>Khoảng 0,41–0,45 giây (3 lần đo: 0,452 / 0,426 / 0,413 giây)</td></tr><tr><td>Kích thước</td><td>15 GB-tháng hạn mức đĩa, chứa cả hệ điều hành và công cụ</td><td>251 MB trên đĩa (63,3 MB ở dạng nén), nhỏ hơn khoảng 60 lần</td></tr><tr><td>Nhân hệ điều hành</td><td>6.8.0-1070-azure, nhân riêng của máy ảo chạy trên Azure</td><td>6.8.0-1070-azure, dùng chung nhân với máy Codespace</td></tr><tr><td>Tài nguyên ứng dụng nhìn thấy</td><td>2 lõi, 7,8 GB RAM</td><td>Vẫn thấy 2 lõi, 7,8 GB dù thực tế bị giới hạn 0,5 lõi và 128 MiB</td></tr><tr><td>Mức cô lập</td><td>Mạnh: phần cứng ảo do hypervisor cung cấp, mỗi máy có nhân riêng nên lỗi hay tấn công ở một máy khó lan sang máy khác</td><td>Yếu hơn: chỉ tách bằng namespaces (tiến trình, mạng, hệ thống tệp, tên máy) và cgroups (tài nguyên); dùng chung nhân nên một lỗ hổng nhân có thể giúp thoát ra máy chủ</td></tr></tbody></table></div>
+<figure><img src="bai2/h_time.png" alt="Hình 5. Đo thời gian khởi động container và so sánh phiên bản nhân" loading="lazy"><figcaption>Hình 5. Đo thời gian khởi động container và so sánh phiên bản nhân</figcaption></figure>
+<p>Hai lệnh <code>uname -r</code> trong và ngoài container cùng trả về <code>6.8.0-1070-azure</code>, chứng tỏ container dùng chung nhân với máy chủ; hậu tố <code>azure</code> cũng cho thấy chính Codespace là một máy ảo chạy trên hạ tầng Azure. Container khởi động trong chưa đầy nửa giây vì không phải khởi động cả một hệ điều hành, chỉ cần tạo một tiến trình được cô lập trên nhân sẵn có. Cái giá phải trả là mức cô lập thấp hơn máy ảo.</p>
+<h4>A.4. Phát hành image lên GHCR</h4>
+<p>Image được gắn tag <code>ghcr.io/tantamthan/notes-api:1.0</code>, đẩy lên GitHub Container Registry (digest <code>sha256:16a3625340f1…</code>) và chuyển sang chế độ <strong>Public</strong>.</p>
+<figure><img src="bai2/h_ghcr.png" alt="Hình 6. Package notes-api ở chế độ Public trên GHCR" loading="lazy"><figcaption>Hình 6. Package notes-api ở chế độ Public trên GHCR</figcaption></figure>
+<p>Để kiểm tra, toàn bộ container và image cục bộ được xóa, đồng thời đăng xuất khỏi ghcr.io bằng <code>docker logout</code>. Lệnh <code>docker run -d -p 3000:3000 ghcr.io/tantamthan/notes-api:1.0</code> báo không tìm thấy image cục bộ, tự kéo về (Pull complete) với đúng digest lúc push, và API trả lời bình thường với host mới là <code>8390f99ff656</code>. Việc kéo được image khi không đăng nhập chứng tỏ ai cũng tải được image.</p>
+<figure><img src="bai2/h_pull.png" alt="Hình 7. API chạy từ image kéo về từ GHCR" loading="lazy"><figcaption>Hình 7. API chạy từ image kéo về từ GHCR</figcaption></figure>
+<h3>Phần B. Mô phỏng trung tâm dữ liệu với CloudSim Plus</h3>
+<h4>B.1. Cấu hình gốc của BasicFirstExample</h4>
+<p>Ví dụ gốc có 1 máy chủ 8 lõi, mỗi lõi 1.000 MIPS; 2 máy ảo, mỗi máy 4 lõi, 512 MB RAM và 1.000 Mbps băng thông; 4 cloudlet, mỗi cloudlet cần 2 lõi và dài 10.000 MI. Mỗi cloudlet được đặt chỉ dùng 50% mọi tài nguyên (<code>UtilizationModelDynamic(0.5)</code>), tức 50% CPU, 256 MB RAM và 500 Mbps. Máy chủ dùng VmSchedulerSpaceShared nên không cho máy ảo dùng quá số lõi thật; mỗi máy ảo mặc định dùng CloudletSchedulerTimeShared. Broker chia cloudlet lần lượt cho các máy ảo đã tạo được.</p>
+<p>Lưu ý khi làm thí nghiệm: tệp <code>bootstrap.sh</code> chỉ biên dịch mã ở lần chạy đầu tiên, các lần sau chạy lại tệp .jar cũ. Vì vậy sau mỗi lần sửa mã, dự án được biên dịch lại bằng <code>mvn -q clean package -DskipTests</code> rồi mới chạy, và tệp nguồn được khôi phục bằng <code>git checkout</code> trước lần kế tiếp để mỗi lần chỉ đổi đúng một yếu tố.</p>
+<h4>B.2. Kết quả bốn lần chạy</h4>
+<div class="b2-scroll"><table><thead><tr><th>Lần</th><th>Thay đổi</th><th>Hoàn thành cloudlet cuối (giây mô phỏng)</th><th>Nhận xét</th></tr></thead><tbody><tr><td>0</td><td>Giữ nguyên</td><td>20,1</td><td>Cả 4 cloudlet bắt đầu ở 0,1 giây, chạy 20 giây</td></tr><tr><td>1</td><td>Nhân đôi VMS (2 → 4)</td><td>45,6</td><td>VM 2 và VM 3 không đặt được; cloudlet phải chờ đến 25,6 giây mới bắt đầu</td></tr><tr><td>2</td><td>Nhân đôi CLOUDLETS (4 → 8)</td><td>40,1 (chỉ 4/8 cloudlet hoàn thành)</td><td>Cloudlet 4–7 thiếu RAM và băng thông, không hoàn thành; cloudlet 0–3 chậm gấp đôi</td></tr><tr><td>3</td><td>CloudletSchedulerSpaceShared</td><td>20,1</td><td>Giống hệt lần 0, không có cảnh báo</td></tr></tbody></table></div>
+<h4>B.3. Giải thích</h4>
+<p><strong>Lần 0.</strong> Mỗi máy ảo nhận 2 cloudlet × 2 lõi = 4 lõi, vừa khít. Mỗi cloudlet chỉ dùng 50% CPU nên chạy với tốc độ 1.000 × 50% = 500 MIPS, mất 10.000 / 500 = 20 giây. Cộng 0,1 giây khởi tạo, cloudlet cuối xong ở 20,1 giây.</p>
+<figure><img src="bai2/h_lan0.png" alt="Hình 8. Lần 0 – cấu hình gốc" loading="lazy"><figcaption>Hình 8. Lần 0 – cấu hình gốc</figcaption></figure>
+<p><strong>Lần 1.</strong> Bốn máy ảo cần 4 × 4 = 16 lõi, trong khi máy chủ chỉ có 8 lõi và không cho cấp vượt. VM 0 và VM 1 chiếm hết 8 lõi, VM 2 và VM 3 báo <em>No suitable host found</em>. Broker mặc định thử tạo lại các máy ảo hỏng mỗi 5 giây, tổng cộng 5 lần (ở các giây 5,1; 10,2; 15,3; 20,4; 25,5), và chỉ gửi cloudlet đi khi mọi yêu cầu tạo máy ảo đã có kết quả. Đến giây 25,6 broker bỏ cuộc, chuyển VM 2 và VM 3 vào danh sách thất bại, lúc đó cloudlet mới bắt đầu và vẫn chạy 20 giây, nên kết thúc ở 45,6 giây.</p>
+<p>Thêm máy ảo không những không nhanh hơn mà còn chậm hơn lần 0 tới 25,5 giây. Điểm nghẽn nằm ở máy chủ vật lý: xin thêm máy ảo khi máy chủ đã hết lõi chỉ làm hệ thống tốn thời gian chờ, muốn nhanh hơn phải thêm máy chủ.</p>
+<figure><img src="bai2/h_lan1.png" alt="Hình 9. Lần 1 – VM 2 và VM 3 không đặt được, broker thử lại nhiều lần" loading="lazy"><figcaption>Hình 9. Lần 1 – VM 2 và VM 3 không đặt được, broker thử lại nhiều lần</figcaption></figure>
+<p><strong>Lần 2.</strong> Mỗi máy ảo nhận 4 cloudlet (VM 0: cloudlet 0, 2, 4, 6; VM 1: cloudlet 1, 3, 5, 7). Hai cloudlet đến trước trên mỗi máy ảo lấy hết 2 × 256 = 512 MB RAM và 2 × 500 = 1.000 Mbps băng thông. Từ giây 10,1, log báo cloudlet 4–7 xin 256 MB RAM và 500 Mbps nhưng không còn, nên bị treo. Trong khi đó CPU vẫn được chia đều theo time-shared cho cả 4 cloudlet trên mỗi máy ảo, nên cloudlet 0–3 chỉ được nửa năng lực và chạy mất 40 giây thay vì 20 giây. Đến giây 40,22 máy ảo bị hủy khi vẫn còn 2 cloudlet chưa xong, nên cloudlet 4–7 không bao giờ hoàn thành và không có trong bảng kết quả.</p>
+<p>Kết quả này cho thấy nút thắt không chỉ nằm ở CPU mà còn ở RAM và băng thông. Thêm tác vụ khi tài nguyên đã đầy vừa làm chậm các tác vụ đang chạy, vừa khiến tác vụ mới không chạy được.</p>
+<figure><img src="bai2/h_lan2.png" alt="Hình 10. Lần 2 – chỉ 4/8 cloudlet hoàn thành, cảnh báo thiếu RAM và băng thông" loading="lazy"><figcaption>Hình 10. Lần 2 – chỉ 4/8 cloudlet hoàn thành, cảnh báo thiếu RAM và băng thông</figcaption></figure>
+<p><strong>Lần 3.</strong> Kết quả giống hệt lần 0; phân tích ở Câu 2.</p>
+<figure><img src="bai2/h_lan3.png" alt="Hình 11. Lần 3 – đổi sang CloudletSchedulerSpaceShared" loading="lazy"><figcaption>Hình 11. Lần 3 – đổi sang CloudletSchedulerSpaceShared</figcaption></figure>
+<h3>Câu 1. Vì sao notes2 vẫn báo memoryGB bằng RAM máy chủ?</h3>
+<p><strong>Đề bài:</strong> <em>Vì sao API trong container notes2 vẫn báo memoryGB bằng RAM máy chủ dù đã giới hạn 128 MB? Ứng dụng Java hoặc Node.js chạy trong container cần lưu ý gì về điều này?</em></p>
+<h4>1.1. Trả lời</h4>
+<p>API lấy số liệu bằng <code>os.totalmem()</code> và <code>os.cpus()</code>. Hai hàm này hỏi thẳng nhân hệ điều hành (qua <code>/proc/meminfo</code>, <code>/proc/cpuinfo</code>). Container không có phần cứng ảo hay nhân riêng như máy ảo, nó dùng chung nhân với máy chủ, và các tệp trên không được cô lập theo container. Vì vậy nhân trả lời bằng thông tin của cả máy thật: notes2 báo 2 lõi và 7,8 GB, giống hệt notes1 và máy Codespace.</p>
+<p>Giới hạn <code>--memory=128m</code> và <code>--cpus=0.5</code> được áp đặt bằng <strong>cgroups</strong>, một cơ chế khác hẳn: nhân âm thầm đếm bộ nhớ và thời gian CPU của nhóm tiến trình. Khi container dùng quá 128 MB, nhân sẽ kết thúc tiến trình (OOM kill, mã thoát 137); khi dùng quá nửa lõi, tiến trình bị tạm dừng chờ đến chu kỳ sau (throttling). Giới hạn nằm trong <code>/sys/fs/cgroup/memory.max</code>, và thực tế tệp này trong notes2 ghi 134217728 byte, tức đúng 128 MiB, khớp với cột LIMIT của docker stats (Hình 4).</p>
+<p>Đây chính là khác biệt giữa ảo hóa mức máy và mức hệ điều hành: máy ảo được hypervisor đưa cho một bộ phần cứng ảo nên hệ điều hành bên trong chỉ thấy đúng phần được cấp, còn container chỉ là tiến trình bị rào lại trên một nhân dùng chung.</p>
+<h4>1.2. Lưu ý với Node.js</h4>
+<ul>
+<li><strong>Không tự chia tài nguyên theo os.cpus() và os.totalmem(): </strong>nếu dùng <code>cluster</code> tạo số tiến trình bằng số lõi thấy được, notes2 sẽ tạo 2 tiến trình tranh nhau nửa lõi, gây chậm thay vì nhanh. Kích thước bộ nhớ đệm (cache) cũng không được tính theo 7,8 GB của máy chủ.</li>
+<li><strong>Đặt giới hạn heap rõ ràng: </strong>V8 tự chọn giới hạn heap dựa trên bộ nhớ nó nhìn thấy; tùy phiên bản Node, con số này có thể vượt xa 128 MB. Khi đó ứng dụng không gặp lỗi JavaScript báo hết bộ nhớ mà bị nhân giết đột ngột. Nên đặt <code>NODE_OPTIONS=--max-old-space-size=96</code> (khoảng 75% giới hạn, chừa chỗ cho bộ nhớ ngoài heap).</li>
+<li><strong>Đọc đúng giới hạn: </strong>Node có <code>process.constrainedMemory()</code> trả về giới hạn cgroup. API có thể trả thêm trường này để báo đúng 128 MB.</li>
+</ul>
+<h4>1.3. Lưu ý với Java</h4>
+<ul>
+<li><strong>JVM cũ (trước JDK 10 và 8u191) không biết cgroups: </strong>heap mặc định bằng 1/4 RAM máy chủ, dễ vượt giới hạn container và bị giết.</li>
+<li><strong>JVM mới đã nhận biết container nhưng mặc định khá dè dặt: </strong>heap tối đa chỉ bằng 25% giới hạn container, tức khoảng 32 MB với notes2. Nên chỉnh bằng <code>-XX:MaxRAMPercentage=75</code>, không đặt 100% vì JVM còn dùng bộ nhớ ngoài heap (metaspace, ngăn xếp luồng, bộ nhớ native).</li>
+<li><strong>Số lõi ảnh hưởng nhiều thành phần: </strong>số luồng thu gom rác và kích thước pool luồng mặc định đều dựa vào số lõi JVM nhận được, nên cần kiểm tra lại khi chạy với <code>--cpus</code> nhỏ.</li>
+</ul>
+<h3>Câu 2. Time-shared và space-shared</h3>
+<p><strong>Đề bài:</strong> <em>Time-shared và space-shared khác nhau ra sao trong kết quả lần 3? Một nhà cung cấp đám mây hướng thị trường sẽ chọn chính sách nào cho gói giá rẻ, vì sao?</em></p>
+<h4>2.1. Khác biệt trong kết quả lần 3</h4>
+<p>Trong lần 3, kết quả <strong>không khác</strong> lần 0: cả 4 cloudlet đều bắt đầu ở 0,1 giây và kết thúc ở 20,1 giây, không có cảnh báo nào. Lý do là mỗi máy ảo có 4 lõi và chỉ nhận 2 cloudlet, mỗi cloudlet cần 2 lõi, nên mọi cloudlet đều có lõi riêng để chạy ngay. Khi không có tranh chấp thì cách chia tài nguyên không còn ý nghĩa: hai chính sách cho cùng một kết quả.</p>
+<p>Khác biệt chỉ lộ ra khi nhu cầu vượt khả năng của máy ảo, như cấu hình lần 2:</p>
+<ul>
+<li><strong>Time-shared (đã quan sát ở lần 2): </strong>mọi cloudlet được nhận vào chạy cùng lúc và chia nhau CPU. Kết quả là cloudlet 0–3 bị kéo chậm từ 20 giây lên 40 giây vì phải chia CPU với những cloudlet thậm chí không chạy được do thiếu RAM. Không ai phải xếp hàng, nhưng ai cũng chậm và hiệu năng khó đoán trước.</li>
+<li><strong>Space-shared (theo nguyên lý): </strong>mỗi cloudlet được giữ lõi riêng; 2 cloudlet đầu trên mỗi máy ảo chạy với tốc độ đầy đủ, các cloudlet còn lại phải chờ trong hàng đợi đến khi có lõi trống. Người đến trước không bị người đến sau làm chậm, tốc độ chạy đoán trước được, đổi lại người đến sau phải chờ.</li>
+</ul>
+<p>Nói gọn: time-shared không bắt ai chờ nhưng làm mọi người cùng chậm; space-shared đảm bảo tốc độ cho người đang chạy nhưng bắt người đến sau xếp hàng.</p>
+<h4>2.2. Chính sách cho gói giá rẻ</h4>
+<p>Nhà cung cấp hướng thị trường sẽ chọn <strong>time-shared</strong> cho gói giá rẻ, vì những lý do sau:</p>
+<ul>
+<li><strong>Bán được nhiều hơn số lõi thật: </strong>khách gói rẻ thường chạy web nhỏ, phần lớn thời gian rảnh. Chia sẻ thời gian cho phép xếp nhiều khách lên cùng một lõi (overcommit), tận dụng phần cứng tối đa nên hạ được giá.</li>
+<li><strong>Không từ chối ai: </strong>mọi khách đều chạy được ngay, chỉ chậm đi khi máy bận. Điều này hợp với cam kết “cố gắng tối đa” của gói rẻ, không hứa hiệu năng cố định.</li>
+<li><strong>Có trong thực tế: </strong>các loại máy dùng chung lõi hoặc có hiệu năng bùng nổ như dòng t của AWS EC2 hay e2-micro của Google Cloud hoạt động theo tinh thần này.</li>
+</ul>
+<p>Space-shared, tức giữ lõi riêng cho từng khách, phù hợp hơn với gói cao cấp có cam kết hiệu năng (SLA), vì khách trả nhiều tiền hơn để không bị ảnh hưởng bởi người dùng chung. Mặt trái của time-shared là hiện tượng “hàng xóm ồn ào” mà lần 2 đã minh họa: một số tác vụ chiếm tài nguyên làm chậm các tác vụ khác, nên nhà cung cấp phải thêm cơ chế hạn chế như tín dụng CPU.</p>
+<h3>Câu 3. Giá trị và giới hạn của mô phỏng</h3>
+<p><strong>Đề bài:</strong> <em>Mô phỏng giúp ích gì trước khi thuê hạ tầng thật, và kết quả mô phỏng có thể sai lệch với thực tế ở điểm nào?</em></p>
+<h4>3.1. Mô phỏng giúp ích gì</h4>
+<ul>
+<li><strong>Thử nhiều phương án mà không tốn tiền: </strong>mỗi lần chạy chỉ mất vài giây trong Codespace và cho kết quả lặp lại được, trong khi thuê hạ tầng thật để thử từng cấu hình vừa tốn tiền vừa mất thời gian.</li>
+<li><strong>Tìm điểm nghẽn trước khi đầu tư: </strong>lần 1 cho thấy thêm máy ảo khi máy chủ đã hết lõi không những vô ích mà còn làm chậm thêm 25,5 giây. Lần 2 cho thấy RAM và băng thông của máy ảo cạn trước cả CPU. Biết trước những điều này giúp quyết định đúng là thêm máy chủ hay nâng RAM, chứ không phải thêm máy ảo.</li>
+<li><strong>So sánh chính sách: </strong>có thể đổi chính sách lập lịch hay chính sách đặt máy ảo và so sánh trên cùng một tải, như lần 0 và lần 3.</li>
+<li><strong>Thử những tình huống khó tạo thật: </strong>hàng nghìn máy chủ, máy chủ bị hỏng, tải tăng đột biến.</li>
+</ul>
+<h4>3.2. Mô phỏng có thể sai lệch ở đâu</h4>
+<ul>
+<li><strong>Mô hình CPU quá đơn giản: </strong>mỗi lõi có tốc độ MIPS cố định, độ dài tác vụ và mức dùng tài nguyên (50%) biết trước. Thực tế tốc độ phụ thuộc bộ nhớ đệm, băng thông bộ nhớ, ổ đĩa, nhiệt độ, và độ dài tác vụ thường không biết trước.</li>
+<li><strong>Bỏ qua chi phí ảo hóa và thời gian khởi động: </strong>trong mô phỏng máy ảo sẵn sàng ngay ở giây 0,1, còn thực tế Codespace mất <mark>[thời gian khởi động Codespace]</mark> để khởi động. Chuyển đổi ngữ cảnh giữa các tiến trình cũng không bị tính, như chính tài liệu của CloudletSchedulerTimeShared thừa nhận.</li>
+<li><strong>Hành vi phụ thuộc mặc định của công cụ: </strong>khoảng chờ 5 giây và 5 lần thử lại ở lần 1, hay việc cloudlet 4–7 bị treo rồi bị bỏ dở ở lần 2, là quy ước của CloudSim Plus. Một hệ thống thật có thể dùng bộ nhớ ảo (swap), xếp hàng tác vụ hoặc báo lỗi ngay, nên con số tuyệt đối sẽ khác.</li>
+<li><strong>Thiếu mạng và tranh chấp thật: </strong>ví dụ cơ bản không mô hình độ trễ mạng, nghẽn ổ đĩa, “hàng xóm ồn ào” từ khách hàng khác hay lỗi phần cứng.</li>
+<li><strong>Kết quả chỉ đúng bằng dữ liệu đầu vào: </strong>nếu giả định về tải sai thì kết luận cũng sai.</li>
+</ul>
+<p>Vì vậy mô phỏng nên dùng để so sánh tương đối và loại bớt phương án kém, sau đó chạy thử nhỏ trên hạ tầng thật để kiểm chứng và hiệu chỉnh các tham số của mô hình.</p>
+</section>
+<!-- ===== HẾT BÀI 2 ===== -->
+
 </body>
 </html>
